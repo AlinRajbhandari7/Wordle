@@ -8,16 +8,16 @@ use std::collections::HashMap;
     pub cap : Option<u16>
 }
 
-    fn main(){
-        let mut frequecy_map = HashMap::<char,Letterconstraint>::new();
-        let  x = ip_word();
-        let  y = feedback();
-    let possible_words = read_file("allowed_words.txt")
-    .expect("File not found");
+fn main(){
+    let mut frequecy_map = HashMap::<char,Letterconstraint>::new();
+    let guess = ip_word();
+    let  feedback = feedback();
+    let possible_words = read_file("allowed_words.txt").expect("File not found");
     println!("total possible words {}", possible_words.len());
-    let first_pass_vec = filter(&x,&y,possible_words);
+    let first_pass_vec = filter(&guess,&feedback,possible_words,&frequecy_map);
     println!("length {}", first_pass_vec.len());
-    frequecy_map_call(&mut frequecy_map,&x,&y);
+    frequecy_map_call(&mut frequecy_map,&guess,&feedback);
+    
 }
 
 fn ip_word() -> String {
@@ -48,17 +48,17 @@ fn read_file(file_path : &str)-> Result<Vec<String>,io::Error>{
     Ok(a)
 }
 
-fn filter(guess : &str, feedback : &Vec<u16>, possible_words : Vec<String>) -> Vec<String>{
+fn filter(guess : &str, feedback : &Vec<u16>, possible_words : Vec<String>, frequecy_map: &HashMap<char,Letterconstraint>) -> Vec<String>{
     let mut filtered_words = Vec::new();
     for words in possible_words{
-        if is_valid(&guess,&feedback,&words){
+        if is_valid(&guess,&feedback,&words,&frequecy_map){
             filtered_words.push(words);
         }
     }
     filtered_words
 }
 
-fn is_valid(guess : &str, feedback : &[u16], word : &str ) -> bool{
+fn is_valid(guess : &str, feedback : &[u16], word : &str, frequecy_map: &HashMap<char, Letterconstraint>  ) -> bool{
     let word_chars : Vec<char> = word.chars().collect();
     let guess_chars : Vec<char> = guess.chars().collect();
     for i in 0..5{
@@ -68,21 +68,20 @@ fn is_valid(guess : &str, feedback : &[u16], word : &str ) -> bool{
             }
         }
     }
-    for i in 0..5{
-        if feedback[i] == 0{
-            if word_chars.contains(&guess_chars[i]){
+    for (&letter,constraint) in frequecy_map{
+        // count instances of letter in for each word
+        let actual_count = word.chars().filter(|&c| c == letter).count() as u16 ;
+        if actual_count < constraint.min_count{
+            return false;
+        }
+        if let Some(excat_limit) = constraint.cap{
+            if actual_count != excat_limit{
                 return false;
             }
-        }
-    }
-    for i in 0..5{
-        if feedback[i] == 1{
-            if !word_chars.contains(&guess_chars[i]) || word_chars[i] == guess_chars[i]{
-                return false
-            }
-        }
+        }  
     }
     true
+
 }
 
 fn frequecy_map_call(frequecy_map : &mut HashMap<char,Letterconstraint>, guess : &str, feedback : &[u16]){
